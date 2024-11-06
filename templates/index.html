@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Versa Query Interface</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Smooth Gradient Background */
+        body {
+            background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+            color: #e0e0e0;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        /* Main Container Styling */
+        .container {
+            width: 100%;
+            max-width: 900px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        /* Header Styling */
+        .navbar {
+            background: transparent;
+            padding: 20px 0;
+            text-align: center;
+        }
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 2em;
+            color: #ffffff;
+        }
+
+        /* Query and Response Card */
+        .card {
+            background-color: #333333;
+            border-radius: 16px;
+            box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            border: 1px solid #4a4a4a;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+        /* Form Label and Input */
+        label {
+            color: #b3b3b3;
+            font-size: 1em;
+            margin-bottom: 10px;
+            display: block;
+        }
+        .form-control {
+            background-color: #444444;
+            border: none;
+            color: #e0e0e0;
+            padding: 15px;
+            font-size: 1.1em;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        /* Submit Button */
+        .btn-primary {
+            background: linear-gradient(135deg, #4a90e2, #357ab8);
+            border: none;
+            width: 100%;
+            padding: 14px;
+            font-size: 1em;
+            font-weight: bold;
+            color: white;
+            border-radius: 8px;
+            transition: background 0.3s ease;
+            cursor: pointer;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #357ab8, #4a90e2);
+        }
+
+        /* Response Section Styling */
+        #response-output {
+            background-color: #444444;
+            padding: 25px;
+            border-radius: 16px;
+            margin-top: 20px;
+            display: none;
+            color: #ffffff;
+            text-align: left;
+        }
+        #response-output h2 {
+            font-size: 1.5em;
+            color: #4a90e2;
+            margin-bottom: 20px;
+        }
+
+        /* Emphasis for Headings */
+        .response-heading {
+            font-weight: bold;
+            color: #4a90e2;
+            font-size: 1.2em;
+        }
+
+        /* Numbered List Styling */
+        .numbered-item {
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #b3e5ff;
+        }
+        .content {
+            margin-bottom: 10px;
+            color: #ffffff;
+        }
+
+        /* Source List Styling */
+        .source-item {
+            font-size: 0.9em;
+            color: #a8a8a8;
+            margin-bottom: 5px;
+        }
+        .source-number {
+            font-weight: bold;
+            color: #4a90e2;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar with Brand Header -->
+    <nav class="navbar navbar-expand-lg">
+        <a class="navbar-brand" href="#">Cavell's Versa Documentation RAG </a>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container">
+        <div class="card">
+            <form id="query-form">
+                <label for="query-text">Enter Your Query Below:</label>
+                <input type="text" id="query-text" name="query-text" class="form-control" placeholder="Type your question here">
+                <button type="submit" class="btn btn-primary">Submit Query</button>
+            </form>
+        </div>
+
+        <!-- Response Output -->
+        <div id="response-output" class="card">
+            <h2>Response</h2>
+            <div id="response-content">
+                <!-- This is where the formatted response will be dynamically inserted -->
+            </div>
+            <div id="source-content" style="margin-top: 20px;">
+                <span class="response-heading">Sources:</span>
+                <div id="source-text"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery and Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <!-- JavaScript to Handle Query Submission and Formatting -->
+    <script>
+        document.getElementById('query-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const queryText = document.getElementById('query-text').value;
+
+            // Display loading message in response-output
+            document.getElementById('response-output').style.display = "block";
+            document.getElementById('response-content').innerHTML = "<p>Loading...</p>";
+
+            // Fetch the query response
+            const response = await fetch('/query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query_text: queryText })
+            });
+
+            const data = await response.json();
+
+            // Clear previous response and sources
+            document.getElementById('response-content').innerHTML = "";
+            document.getElementById('source-text').innerHTML = "";
+
+            // Format and display response with proper handling of nested lists
+            const responseText = data.response;
+            const responseLines = responseText.split('\n');
+            responseLines.forEach((line, index) => {
+                const listItem = document.createElement("p");
+
+                // Check for nested list items (e.g., "1.", "2.", "1.1", "2.1", etc.)
+                if (/^\d+\./.test(line.trim()) || /^\d+\.\d+\./.test(line.trim())) {
+                    listItem.classList.add("numbered-item");
+                    listItem.innerHTML = `<span class="number">${line.trim()}</span>`;
+                } else {
+                    listItem.classList.add("content");
+                    listItem.innerText = line.trim();
+                }
+
+                document.getElementById('response-content').appendChild(listItem);
+            });
+
+            // Format and display sources as a clean, readable list
+            const sources = data.sources.join(', ').split(', ');
+            sources.forEach((source, index) => {
+                const sourceItem = document.createElement("p");
+                sourceItem.classList.add("source-item");
+                sourceItem.innerHTML = `<span class="source-number">${index + 1}.</span> ${source}`;
+                document.getElementById('source-text').appendChild(sourceItem);
+            });
+        });
+    </script>
+</body>
+</html>
